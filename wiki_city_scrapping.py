@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 
 # Local imports
 # I've created some utilities functions to handle some string treatment
-from utils import remove_surrounding,remove_new_line,remove_IBGE,remove_unicode,transform
+from utils import transform
 
 
 
@@ -31,6 +31,11 @@ if __name__ == "__main__":
     wikipedia.set_lang("pt")
 
 
+    '''
+    Querying "Lista de capitais do Brasil" and the page that i want is the third
+    page of my query results, after that i get the page html and parse using
+    BeautifulSoup so i can look for tbody and tha data that i want
+    '''
     query = wikipedia.search("Lista de capitais do Brasil")
     page = wikipedia.WikipediaPage(query[2])
     html = page.html()
@@ -47,15 +52,27 @@ if __name__ == "__main__":
     for i in rows:
         row = i.find_all("td")
         try:
-            capitals.append([row[1].a['href'],row[1].text])
+            capitals.append([row[1].a['href'],row[1].text,row[1].a['title']])
         except:
-            print("Nenhum dado aqui")
+            print("No data in this line")
 
     for i in range(len(capitals)):
         try:
             capital = capitals[i][1]
             page_path = capitals[i][0]
+
+            if capital == "Salvador[nota 1]":
+                capital = capital.replace("[nota 1]","")
+
             page = requests.get("https://pt.wikipedia.org" + page_path)
+
+            '''
+            Here i got a best name for going directly to get the summary for
+            a page and storing it in summary so i can add to my data dictionary
+            later in the code
+            '''
+            summary = wikipedia.summary(capitals[i][2])
+
             capital_parsed = BeautifulSoup(page.text,"html.parser")
 
             '''
@@ -79,6 +96,7 @@ if __name__ == "__main__":
             summary_rows  =  summary_table[0].find_all("tr")
 
             data = {}
+            data["Summary"] = summary
 
             '''
             In each row from 16 to the end we will get each column of
@@ -98,7 +116,7 @@ if __name__ == "__main__":
                     data[key] = value
             dicts[capital] = data.copy()
         except:
-            print("Nenhum dado aqui")
+            print("No data in this line")
 
     '''
     Creating DataFrame using pandas, transposing and priting on console
